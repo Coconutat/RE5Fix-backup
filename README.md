@@ -10,6 +10,7 @@ This is a DLL hook that fixes various issues with Resident Evil 5 relating to ul
 - Remove yellow colour filter.
 - Adjust shadow quality.
 - Remove 4096x4096 resolution limit.
+- Borderless fullscreen when using the in-game windowed mode.
 
 ### Ultrawide Fixes
 - Fixed UI scaling using ultrawide.
