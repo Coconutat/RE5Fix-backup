@@ -21,6 +21,7 @@ int iShadowQuality;
 bool bShadowQuality;
 bool bColourFilter;
 bool bFOVAdjust;
+bool bBorderlessWindowed;
 float fFOVAdjust;
 int iCustomResX;
 int iCustomResY;
@@ -143,6 +144,70 @@ void __declspec(naked) FOV5_CC()
 	}
 }
 
+struct WindowSearchResult
+{
+	HWND hWnd;
+	LONG area;
+};
+
+BOOL CALLBACK FindProcessWindow(HWND hWnd, LPARAM lParam)
+{
+	DWORD processID = 0;
+	GetWindowThreadProcessId(hWnd, &processID);
+
+	if (processID != GetCurrentProcessId())
+	{
+		return TRUE;
+	}
+
+	if (hWnd == GetConsoleWindow() || GetWindow(hWnd, GW_OWNER) != NULL || !IsWindowVisible(hWnd))
+	{
+		return TRUE;
+	}
+
+	RECT windowRect = {};
+	if (!GetWindowRect(hWnd, &windowRect))
+	{
+		return TRUE;
+	}
+
+	LONG width = windowRect.right - windowRect.left;
+	LONG height = windowRect.bottom - windowRect.top;
+
+	if (width <= 0 || height <= 0)
+	{
+		return TRUE;
+	}
+
+	WindowSearchResult* result = reinterpret_cast<WindowSearchResult*>(lParam);
+	LONG area = width * height;
+
+	if (area > result->area)
+	{
+		result->hWnd = hWnd;
+		result->area = area;
+	}
+
+	return TRUE;
+}
+
+HWND GetProcessWindow()
+{
+	WindowSearchResult result = {};
+
+	for (int i = 0; i < 20 && result.hWnd == NULL; i++)
+	{
+		EnumWindows(FindProcessWindow, reinterpret_cast<LPARAM>(&result));
+
+		if (result.hWnd == NULL)
+		{
+			Sleep(500);
+		}
+	}
+
+	return result.hWnd;
+}
+
 void ReadConfig()
 {
 	INIReader config("RE5Fix.ini");
@@ -157,6 +222,7 @@ void ReadConfig()
 	bShadowQuality = config.GetBoolean("Shadow Quality", "Enabled", true);
 	bColourFilter = config.GetBoolean("Remove Colour Filter", "Enabled", true);
 	bFOVAdjust = config.GetBoolean("Increase FOV", "Enabled", true);
+	bBorderlessWindowed = config.GetBoolean("Borderless Windowed", "Enabled", false);
 	fFOVAdjust = config.GetFloat("Increase FOV", "Value", -1);
 	iCustomResX = config.GetInteger("Custom Resolution", "Width", -1);
 	iCustomResY = config.GetInteger("Custom Resolution", "Height", -1);
@@ -168,6 +234,70 @@ void ReadConfig()
 	fDesktopAspect = fDesktopRight / fDesktopBottom;
 
 	fCustomAspect = (float)iCustomResX / iCustomResY;
+}
+
+void BorderlessWindowed()
+{
+	if (bBorderlessWindowed)
+	{
+		HWND hWnd = GetProcessWindow();
+
+		if (hWnd)
+		{
+			LONG_PTR style = GetWindowLongPtr(hWnd, GWL_STYLE);
+			LONG_PTR exStyle = GetWindowLongPtr(hWnd, GWL_EXSTYLE);
+
+			if ((style & (WS_CAPTION | WS_THICKFRAME)) == 0)
+			{
+				#if _DEBUG
+				std::cout << "Borderless windowed skipped. Game does not appear to be in windowed mode." << std::endl;
+				#endif
+				return;
+			}
+
+			HMONITOR monitor = MonitorFromWindow(hWnd, MONITOR_DEFAULTTONEAREST);
+			MONITORINFO monitorInfo = {};
+			monitorInfo.cbSize = sizeof(MONITORINFO);
+
+			if (GetMonitorInfo(monitor, &monitorInfo))
+			{
+				RECT monitorRect = monitorInfo.rcMonitor;
+
+				style &= ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU);
+				style |= WS_POPUP;
+				exStyle &= ~(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE | WS_EX_STATICEDGE);
+
+				SetWindowLongPtr(hWnd, GWL_STYLE, style);
+				SetWindowLongPtr(hWnd, GWL_EXSTYLE, exStyle);
+				SetWindowPos(
+					hWnd,
+					HWND_TOP,
+					monitorRect.left,
+					monitorRect.top,
+					monitorRect.right - monitorRect.left,
+					monitorRect.bottom - monitorRect.top,
+					SWP_FRAMECHANGED | SWP_NOOWNERZORDER | SWP_SHOWWINDOW);
+
+				#if _DEBUG
+				std::cout << "Borderless windowed enabled." << std::endl;
+				#endif
+			}
+			else
+			{
+				#if _DEBUG
+				std::cout << "Borderless windowed failed to get monitor info." << std::endl;
+				#endif
+				return;
+			}
+		}
+		else
+		{
+			#if _DEBUG
+			std::cout << "Borderless windowed failed to find game window." << std::endl;
+			#endif
+			return;
+		}
+	}
 }
 
 void UIFix()
@@ -405,14 +535,14 @@ void ColourFilter()
 		// re5dx9.exe+945D8 - 0F87 87660000 - ja re5dx9.exe+9AC65
 		// Address of signature = re5dx9.exe + 0x000945D8
 		// "\x0F\x87\x00\x00\x00\x00\xFF\x24\x00\x00\x00\x00\x00\xD9\x05\x00\x00\x00\x00\x51", "xx????xx?????xx????x"
-		// "0F 87 ? ? ? ? FF 24 ? ? ? ? ? D9 05 ? ? ? ? 51"
+		// "0F 87 ? ? ? ? FF 24 ? ? ? ? D9 05 ? ? ? ? 51"
 		//intptr_t ColourFilterScanResult = scanner.scan("0F 87 ? ? ? ? FF 24 ? ? ? ? ? D9 05 ? ? ? ? 51");
 
 		uint8_t* ColourFilterScanResult = Memory::PatternScan(baseModule, "0F 87 ? ? ? ? FF 24 ? ? ? ? ? D9 05 ? ? ? ? 51");
 
 		if (ColourFilterScanResult)
 		{
-			Memory::PatchBytes((intptr_t)ColourFilterScanResult, "\xE9\x88\x66\x00\x00\x90", 6); // Patch to JMP
+			Memory::PatchBytes((intptr_t)ColourFilterScanResult, "\xE9\x88\x66\x00\x00\x90", 6); // Patch to JMJ
 			std::cout << "Colour filter disabled." << std::endl;
 		}
 		else
@@ -431,7 +561,7 @@ void FOVAdjust()
 	{
 		// FOV 1
 		// Address of signature = re5dx9.exe + 0x0044B173
-		//  "\xF3\x0F\x00\x00\x00\xF3\x0F\x00\x00\xF3\x0F\x00\x00\x00\x8B\x55\x00\xF3\x0F\x00\x00\xF3\x0F\x00\x00\xF3\x0F", "xx???xx??xx???xx?xx??xx??xx"
+		//  "\xF3\x0F\x00\x00\x00\xF3\x0F\x00\x00\xF3\x0F\x00\x00\x00\x8B\x55\x00\xF3\x0F\x00\x00\xF3\x0F\x00\x00\xF3\x0F", "xx????xx??xx????xx?xx??xx??xx"
 		//  "F3 0F ? ? ? F3 0F ? ? F3 0F ? ? ? 8B 55 ? F3 0F ? ? F3 0F ? ? F3 0F"
 		uint8_t* FOV1ScanResult = Memory::PatternScan(baseModule, "F3 0F ? ? ? F3 0F ? ? F3 0F ? ? ? 8B 55 ? F3 0F ? ? F3 0F ? ? F3 0F");
 
@@ -550,6 +680,7 @@ DWORD __stdcall Main(void*)
 	std::cout << "Console initiated" << std::endl;
 	#endif	
 	ReadConfig();
+	BorderlessWindowed();
 	UIFix();
 	ResolutionLimits();
 	UncapFPS();
@@ -587,4 +718,3 @@ BOOL APIENTRY DllMain(HMODULE hModule, int ul_reason_for_call, LPVOID lpReserved
 
 	return TRUE;
 }
-
