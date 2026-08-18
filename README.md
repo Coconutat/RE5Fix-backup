@@ -4,6 +4,17 @@
 
 This is a DLL hook that fixes various issues with Resident Evil 5 relating to ultrawide support and more.<br />
 
+## Version Compatibility
+- This repository is currently adapted for the Steam version of `re5dx9.exe`
+  **v1.0.0.129** (PE timestamp 2023-02-13).
+- The executable is Enigma-protected, so RE5Fix scans the **runtime memory**
+  after unpacking. Do not judge compatibility by scanning the file on disk.
+- **MovieFix is not yet available for v1.0.0.129** — the old signature no longer
+  exists and the replacement signature is still TODO. All other features are
+  verified against runtime memory.
+- The existing DXVK `d3d9.dll` in the game folder can stay in place; RE5Fix
+  coexists with it.
+
 ## Features
 - FOV adjustment.
 - Uncap 120 FPS limit.
