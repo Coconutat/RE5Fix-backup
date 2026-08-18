@@ -304,8 +304,8 @@ void UIFix()
 {
 	if (bFixUI && fDesktopAspect > 1.8f or bFixUI && fCustomAspect > 1.8f)
 	{
-		// re5dx9.exe+1F43DF - 8B 83 E04E0000 - mov eax,[ebx+00004EE0]
-		// Address of signature = re5dx9.exe + 0x001F43DF
+		// v1.0.0.129 runtime: re5dx9.exe + 0x001DE90F (old: +0x001F43DF)
+		// Address of signature = re5dx9.exe + 0x001DE90F
 		// "\x8B\x83\x00\x00\x00\x00\x83\xE8\x00\x0F\x84\x00\x00\x00\x00\x83\xE8\x00\x74", "xx????xx?xx????xx?x"
 		// "8B 83 ? ? ? ? 83 E8 ? 0F 84 ? ? ? ? 83 E8 ? 74"
 		uint8_t* fixUIScanResult1 = Memory::PatternScan(baseModule, "8B ? E0 4E 00 00 ? ? ? ? ? ? ? ? ? 83 ? ? ?");
@@ -322,8 +322,8 @@ void UIFix()
 			return;
 		}
 
-		// re5dx9.exe+1F2D06 - 8B 81 E04E0000 - mov eax, [ecx + 00004EE0]
-		// Address of signature = re5dx9.exe + 0x001F2D06
+		// v1.0.0.129 runtime: re5dx9.exe + 0x001DD236 (old: +0x001F2D06)
+		// Address of signature = re5dx9.exe + 0x001DD236
 		// "\x8B\x81\x00\x00\x00\x00\x83\xEC\x00\x83\xF8", "xx????xx?xx"
 		// "8B 81 ? ? ? ? 83 EC ? 83 F8"
 		uint8_t* fixUIScanResult2 = Memory::PatternScan(baseModule, "8B 81 ? ? ? ? 83 EC ? 83 F8");
@@ -350,9 +350,8 @@ void ResolutionLimits()
 {
 	if (bRemoveResolutionLimit)
 	{
-		//re5dx9.exe + 387B7E - 8B 0D 60982301 - mov ecx, [re5dx9.exe + E39860]
-
-		// Address of signature = re5dx9.exe + 0x00387B7E
+		// v1.0.0.129 runtime: re5dx9.exe + 0x00383B2E (old: +0x00387B7E)
+		// Address of signature = re5dx9.exe + 0x00383B2E
 		// "\x8B\x0D\x00\x00\x00\x00\x8A\x41", "xx????xx"
 		// "8B 0D ? ? ? ? 8A 41"
 		uint8_t* resLimitScanResult = (Memory::PatternScan(baseModule, "8B 0D ? ? ? ? 8A 41") + 2);
@@ -386,8 +385,8 @@ void UncapFPS()
 
 	if (bFPSCap && iFPSCap > 120)
 	{
-		// re5dx9.exe+4B45C - F3 0F5E 4E 3C         - divss xmm1,[esi+3C] -> (30/120) || 120 FPS cap
-		// Address of signature = re5dx9.exe + 0x0004B45C
+		// v1.0.0.129 runtime: re5dx9.exe + 0x0002706C (old: +0x0004B45C)
+		// Address of signature = re5dx9.exe + 0x0002706C
 		// "\xF3\x0F\x00\x00\x00\x0F\x28\x00\xF3\x0F\x00\x00\xF3\x0F\x00\x00\x00\x00\xD9\x54", "xx???xx?xx??xx????xx"
 		// "F3 0F ? ? ? 0F 28 ? F3 0F ? ? F3 0F ? ? ? ? D9 54"
 		uint8_t* FPSCapScanResult = Memory::PatternScan(baseModule, "F3 0F ? ? ? 0F 28 ? F3 0F ? ? F3 0F ? ? ? ? D9 54");
@@ -418,11 +417,10 @@ void CrashFix()
 {
 	if (bCrashFix && fDesktopAspect > 1.8f or bCrashFix && fCustomAspect > 1.8f)
 	{
-		// re5dx9.exe+CBEA24 -> 9/16 = 0.5625
-		// Address of signature = re5dx9.exe + 0x00CBEA24
-		// "\x00\x00\x10\x3F\xAC", "xxxxx"
-		// "00 00 10 3F AC"
-		uint8_t* CrashFixScanResult = Memory::PatternScan(baseModule, "00 00 10 3F AC"); // Returns first match
+		// v1.0.0.129 runtime: re5dx9.exe + 0x00CBCCDC -> 9/16 = 0.5625
+		// Old signature "00 00 10 3F AC" no longer exists in v1.0.0.129.
+		// This longer signature is unique in the runtime memory image.
+		uint8_t* CrashFixScanResult = Memory::PatternScan(baseModule, "00 00 10 3F 00 60 EA 46 00 A0 0C 47 AC"); // Returns first match
 
 		if (CrashFixScanResult)
 		{
@@ -456,11 +454,12 @@ void MovieFix()
 {
 	if (bMovieFix && fDesktopAspect > 1.8f or bMovieFix && fCustomAspect > 1.8f)
 	{
-		//re5dx9.exe + 255700 - F3 0F5C CA - subss xmm1, xmm2
-		// Address of signature = re5dx9.exe + 0x00255700
-		// "\xF3\x0F\x00\x00\xF3\x0F\x00\x00\xF3\x0F\x00\x00\x00\x00\xF3\x0F\x00\x00\x00\x00\xF3\x0F\x00\x00\x00\x00\xF3\x0F\x00\x00\x00\x00\xF3\x0F\x00\x00\x00\x00\xF3\x0F\x00\x00\x00\x00\xF3\x0F\x00\x00\x00\x00\xF3\x0F\x00\x00\x00\x00\x75", "xx??xx??xx????xx????xx????xx????xx????xx????xx????xx????x"
+		// NOTE: v1.0.0.129 no longer contains the old MovieFix signature at
+		// re5dx9.exe + 0x00255700. The new signature is still TODO.
+		// The old pattern is kept so the scan fails gracefully instead of hooking
+		// the wrong code.
+		// Old pattern (pre-v1.0.0.129):
 		// "F3 0F ? ? F3 0F ? ? F3 0F ? ? ? ? F3 0F ? ? ? ? F3 0F ? ? ? ? F3 0F ? ? ? ? F3 0F ? ? ? ? F3 0F ? ? ? ? F3 0F ? ? ? ? F3 0F ? ? ? ? 75"
-		// Does not work on old GFWL version.
 
 		uint8_t* MovieFixScanResult = Memory::PatternScan(baseModule, "F3 0F ? ? F3 0F ? ? F3 0F ? ? ? ? F3 0F ? ? ? ? F3 0F ? ? ? ? F3 0F ? ? ? ? F3 0F ? ? ? ? F3 0F ? ? ? ? F3 0F ? ? ? ? F3 0F ? ? ? ? 75");
 
@@ -499,9 +498,9 @@ void IncreaseQuality()
 {
 	if (bShadowQuality && iShadowQuality >= 1024)
 	{
+		// v1.0.0.129 runtime: re5dx9.exe + 0x0023C8A5 (old: +0x00252805)
 		// Shadow quality. Low=256, Med=512, High=1024.
-		// re5dx9.exe+252805 - 83 C0 0F - add eax,0F
-		// Address of signature = re5dx9.exe + 0x00252805
+		// Address of signature = re5dx9.exe + 0x0023C8A5
 		// "\x83\xC0\x00\x56\x8B\xF1\x83\xE0", "xx?xxxxx"
 		// "83 C0 ? 56 8B F1 83 E0"
 		uint8_t* ShadowQualityScanResult = Memory::PatternScan(baseModule, "83 C0 ? 56 8B F1 83 E0");
@@ -532,8 +531,8 @@ void ColourFilter()
 {
 	if (bColourFilter)
 	{
-		// re5dx9.exe+945D8 - 0F87 87660000 - ja re5dx9.exe+9AC65
-		// Address of signature = re5dx9.exe + 0x000945D8
+		// v1.0.0.129 runtime: re5dx9.exe + 0x0007BD08 (old: +0x000945D8)
+		// Address of signature = re5dx9.exe + 0x0007BD08
 		// "\x0F\x87\x00\x00\x00\x00\xFF\x24\x00\x00\x00\x00\x00\xD9\x05\x00\x00\x00\x00\x51", "xx????xx?????xx????x"
 		// "0F 87 ? ? ? ? FF 24 ? ? ? ? D9 05 ? ? ? ? 51"
 		//intptr_t ColourFilterScanResult = scanner.scan("0F 87 ? ? ? ? FF 24 ? ? ? ? ? D9 05 ? ? ? ? 51");
@@ -560,7 +559,8 @@ void FOVAdjust()
 	if (bFOVAdjust && fFOVAdjust > 0)
 	{
 		// FOV 1
-		// Address of signature = re5dx9.exe + 0x0044B173
+		// v1.0.0.129 runtime: re5dx9.exe + 0x00446E6F (old: +0x0044B173)
+		// Address of signature = re5dx9.exe + 0x00446E6F
 		//  "\xF3\x0F\x00\x00\x00\xF3\x0F\x00\x00\xF3\x0F\x00\x00\x00\x8B\x55\x00\xF3\x0F\x00\x00\xF3\x0F\x00\x00\xF3\x0F", "xx????xx??xx????xx?xx??xx??xx"
 		//  "F3 0F ? ? ? F3 0F ? ? F3 0F ? ? ? 8B 55 ? F3 0F ? ? F3 0F ? ? F3 0F"
 		uint8_t* FOV1ScanResult = Memory::PatternScan(baseModule, "F3 0F ? ? ? F3 0F ? ? F3 0F ? ? ? 8B 55 ? F3 0F ? ? F3 0F ? ? F3 0F");
@@ -581,7 +581,8 @@ void FOVAdjust()
 		}
 
 		// FOV 2
-		// Address of signature = re5dx9.exe + 0x0044B08B
+		// v1.0.0.129 runtime: re5dx9.exe + 0x00446D84 (old: +0x0044B08B)
+		// Address of signature = re5dx9.exe + 0x00446D84
 		//	"\xF3\x0F\x00\x00\x00\xF3\x0F\x00\x00\xF3\x0F\x00\x00\x00\xF3\x0F\x00\x00\xF3\x0F\x00\x00\xF3\x0F\x00\x00\xE9", "xx???xx??xx???xx??xx??xx??x"
 		//	"F3 0F ? ? ? F3 0F ? ? F3 0F ? ? ? F3 0F ? ? F3 0F ? ? F3 0F ? ? E9"
 		uint8_t* FOV2ScanResult = Memory::PatternScan(baseModule, "F3 0F ? ? ? F3 0F ? ? F3 0F ? ? ? F3 0F ? ? F3 0F ? ? F3 0F ? ? E9");
@@ -602,7 +603,8 @@ void FOVAdjust()
 		}
 
 		// FOV when looking up
-		// Address of signature = re5dx9.exe + 0x0044AF6D
+		// v1.0.0.129 runtime: re5dx9.exe + 0x00446C63 (old: +0x0044AF6D)
+		// Address of signature = re5dx9.exe + 0x00446C63
 		//  "\xD9\x41\x00\x8B\x4D\x00\xD9\x19", "xx?xx?xx"
 		//	"D9 41 ? 8B 4D ? D9 19"
 		uint8_t* FOV3ScanResult = Memory::PatternScan(baseModule, "D9 41 ? 8B 4D ? D9 19");
@@ -623,7 +625,8 @@ void FOVAdjust()
 		}
 
 		// FOV when looking down
-		// Address of signature = re5dx9.exe + 0x0044AFAB
+		// v1.0.0.129 runtime: re5dx9.exe + 0x00446CA4 (old: +0x0044AFAB)
+		// Address of signature = re5dx9.exe + 0x00446CA4
 		//	"\xD9\x5F\x00\xD9\x40\x00\xD9\x1A", "xx?xx?xx"
 		//	"D9 5F ? D9 40 ? D9 1A"
 		uint8_t* FOV4ScanResult = Memory::PatternScan(baseModule, "D9 5F ? D9 40 ? D9 1A");
@@ -644,7 +647,8 @@ void FOVAdjust()
 		}
 
 		// FOV when camera centred?
-		//Address of signature = re5dx9.exe + 0x0044AF33
+		// v1.0.0.129 runtime: re5dx9.exe + 0x00446C29 (old: +0x0044AF33)
+		// Address of signature = re5dx9.exe + 0x00446C29
 		// "\xD9\x5F\x00\xD9\x42\x00\xD9\x18", "xx?xx?xx"
 		//	"D9 5F ? D9 42 ? D9 18"
 		uint8_t* FOV5ScanResult = Memory::PatternScan(baseModule, "D9 5F ? D9 42 ? D9 18");
